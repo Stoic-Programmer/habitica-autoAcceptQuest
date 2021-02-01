@@ -2,14 +2,14 @@
   * https://habitica.fandom.com/wiki/Google_Apps_Script#Faster_Auto_Accept_Quests_and_Auto_Notify_on_Quest_End
 */
 
-const scriptProperties = PropertiesService.getScriptProperties(); 
+const scriptProperties = PropertiesService.getScriptProperties();
 
 /* ========================================== */
 /* [Users] Required script data to fill in    */
 /* ========================================== */
 const USER_ID = scriptProperties.getProperty("apiUser");
 const API_TOKEN = scriptProperties.getProperty("apiToken"); // Do not share this to anyone
-const WEB_APP_URL = scriptProperties.getProperty("appURL"); ;
+const WEB_APP_URL = scriptProperties.getProperty("appURL");
 
 /* ========================================== */
 /* [Users] Required customizations to fill in */
@@ -27,16 +27,16 @@ const ENABLE_QUEST_COMPLETED_NOTIFICATION = 1;
 const AUTHOR_ID = "01daa187-ff5e-46aa-ac3f-d4c529a8c012";
 const SCRIPT_NAME = "Faster Auto Accept Quests and Auto Notify on Quest End (with rate limit check)";
 const HEADERS = {
-  "x-client" : AUTHOR_ID + "-" + SCRIPT_NAME,
-  "x-api-user" : USER_ID,
-  "x-api-key" : API_TOKEN,
+  "x-client": AUTHOR_ID + "-" + SCRIPT_NAME,
+  "x-api-user": USER_ID,
+  "x-api-key": API_TOKEN,
 }
 
 const WAIT_ONGOING_MESSAGE = "**ERROR: Script Failed**  \n\n"
-    + "Script Name: " + SCRIPT_NAME + "  \n"
-    + "Reason: Exceeded [rate limit](https://habitica.fandom.com/wiki/User_blog:LadyAlys/Rate_Limiting_(Intentional_Slow-Downs)_in_Some_Third-Party_Tools)  \n"
-    + "Recommendation: Please avoid manually triggering scripts too quickly, or triggering a different script while another one is not yet finished running. By the time you receive this message, it should now be okay to manually trigger scripts again.";
-    
+  + "Script Name: " + SCRIPT_NAME + "  \n"
+  + "Reason: Exceeded [rate limit](https://habitica.fandom.com/wiki/User_blog:LadyAlys/Rate_Limiting_(Intentional_Slow-Downs)_in_Some_Third-Party_Tools)  \n"
+  + "Recommendation: Please avoid manually triggering scripts too quickly, or triggering a different script while another one is not yet finished running. By the time you receive this message, it should now be okay to manually trigger scripts again.";
+
 const QUEST_COMPLETED_MESSAGE = "Quest Completed.";
 const RESPONSE_OK_MIN = 200; // HTTP status code minimum
 const RESPONSE_OK_MAX = 299; // HTTP status code maximum
@@ -71,7 +71,8 @@ function doOneTimeSetup() {
 function doPost(e) {
   const dataContents = JSON.parse(e.postData.contents);
   const webhookType = dataContents.type;
-  console.info("Web hook called: "+dataContents);
+
+  console.info("Web hook called: " + webhookType);
 
   if ((webhookType === "questInvited") && ENABLE_AUTO_ACCEPT_QUESTS) {
     api_acceptQuest_waitRetryOnFail();
@@ -87,21 +88,21 @@ function doPost(e) {
 
 function api_createWebhook() {
   const payload = {
-    "url" : WEB_APP_URL,
-    "label" : SCRIPT_NAME + " Webhook",
-    "type" : "questActivity",
-    "options" : {
-      "questInvited" : true,
-      "questFinished" : true,
+    "url": WEB_APP_URL,
+    "label": SCRIPT_NAME + " Webhook",
+    "type": "questActivity",
+    "options": {
+      "questInvited": true,
+      "questFinished": true,
     },
   }
 
   const params = {
-    "method" : "post",
-    "headers" : HEADERS,
-    "contentType" : "application/json",
-    "payload" : JSON.stringify(payload),
-    "muteHttpExceptions" : true,
+    "method": "post",
+    "headers": HEADERS,
+    "contentType": "application/json",
+    "payload": JSON.stringify(payload),
+    "muteHttpExceptions": true,
   }
 
   const url = "https://habitica.com/api/v3/user/webhook";
@@ -110,42 +111,45 @@ function api_createWebhook() {
 
 function api_acceptQuest() {
   const params = {
-    "method" : "post", 
-    "headers" : HEADERS,
-    "muteHttpExceptions" : true,
+    "method": "post",
+    "headers": HEADERS,
+    "muteHttpExceptions": true,
   }
-  
-  const url = "https://habitica.com/api/v3/groups/party/quests/accept";
-  let response =  UrlFetchApp.fetch(url, params);
-  let ratelimits = parseRateLimitHeaders(response);
-  console.log("limits = " + ratelimits);
-  console.log(response);
 
+  const url = "https://habitica.com/api/v3/groups/party/quests/accept";
+  let response = UrlFetchApp.fetch(url, params);
+  let result = JSON.parse(response);
+  let ratelimits = parseRateLimitHeaders(response);
+  console.log("remaining = " + ratelimits.remain);
+  console.log("resetTime = " + ratelimits.resetTime);
+  console.log(result);
   return response;
 }
 
 function api_sendPrivateMessage(message, toUserId) {
   const payload = {
-    "message" : message,
-    "toUserId" : toUserId,
+    "message": message,
+    "toUserId": toUserId,
   }
-  
+
   const params = {
-    "method" : "post",
-    "headers" : HEADERS,
-    "contentType" : "application/json",
-    "payload" : JSON.stringify(payload),
-    "muteHttpExceptions" : true,
+    "method": "post",
+    "headers": HEADERS,
+    "contentType": "application/json",
+    "payload": JSON.stringify(payload),
+    "muteHttpExceptions": true,
   }
-  
-  console.info("Sending message to user: "+toUserId);
-  console.info("   message = "+ message);
+
+  console.info("Sending message to user: " + toUserId);
+  console.info("   message = " + message);
 
   const url = "https://habitica.com/api/v3/members/send-private-message";
-  let response =  UrlFetchApp.fetch(url, params);
+  let response = UrlFetchApp.fetch(url, params);
+  let result = JSON.parse(response);
   let ratelimits = parseRateLimitHeaders(response);
-  console.log("limits = " + ratelimits);
-  console.log(response);
+  console.log("remaining = " + ratelimits.remain);
+  console.log("resetTime = " + ratelimits.resetTime);
+  console.log(result);
 
   return response;
 }
@@ -198,7 +202,7 @@ function api_sendPrivateMessage_waitRetryOnFail() {
 
     // Set trigger to retry function (Google Apps Script's timing is inconsistent, actual range for "(10 * 1000)" is from 26 to 83sec)
     ScriptApp.newTrigger("api_sendPrivateMessage_waitRetryOnFail").timeBased().after(10 * 1000).create();
-    
+
     // Save arguments as script properties so that the retry will have the same arguments
     scriptProperties.setProperty("message", message);
     scriptProperties.setProperty("toUserId", toUserId);
