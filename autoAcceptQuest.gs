@@ -71,7 +71,8 @@ function doOneTimeSetup() {
 function doPost(e) {
   const dataContents = JSON.parse(e.postData.contents);
   const webhookType = dataContents.type;
-  
+  console.info("Web hook called: "+dataContents);
+
   if ((webhookType === "questInvited") && ENABLE_AUTO_ACCEPT_QUESTS) {
     api_acceptQuest_waitRetryOnFail();
   }
@@ -115,7 +116,12 @@ function api_acceptQuest() {
   }
   
   const url = "https://habitica.com/api/v3/groups/party/quests/accept";
-  return UrlFetchApp.fetch(url, params);
+  let response =  UrlFetchApp.fetch(url, params);
+  let ratelimits = parseRateLimitHeaders(response);
+  console.log("limits = " + ratelimits);
+  console.log(response);
+
+  return response;
 }
 
 function api_sendPrivateMessage(message, toUserId) {
@@ -132,8 +138,16 @@ function api_sendPrivateMessage(message, toUserId) {
     "muteHttpExceptions" : true,
   }
   
+  console.info("Sending message to user: "+toUserId);
+  console.info("   message = "+ message);
+
   const url = "https://habitica.com/api/v3/members/send-private-message";
-  return UrlFetchApp.fetch(url, params);
+  let response =  UrlFetchApp.fetch(url, params);
+  let ratelimits = parseRateLimitHeaders(response);
+  console.log("limits = " + ratelimits);
+  console.log(response);
+
+  return response;
 }
 
 function api_createWebhook_waitRetryOnFail() {
