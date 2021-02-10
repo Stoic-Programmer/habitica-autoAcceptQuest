@@ -2,6 +2,7 @@
  * https://habitica.fandom.com/wiki/Google_Apps_Script#Faster_Auto_Accept_Quests_and_Auto_Notify_on_Quest_End
  * 
  * 2021-02-08 Add google doc/sheet logging.
+ * 2021-02-10 Spread sheet is not getting all the updates.  The json file is getting all the updates.
  */
 
 const scriptProperties = PropertiesService.getScriptProperties();
@@ -17,6 +18,10 @@ const WEB_APP_URL = scriptProperties.getProperty("appURL");
 /* [Users] Required customizations to fill in */
 /* ========================================== */
 const LOG = "habitica-autoAcceptQuest.json";
+
+const TRACKING = "Raifton Tracking";
+const QUESTS = "Quests";
+const EVENTS = "EVENTS";
 
 /* ========================================== */
 /* [Users] Optional customizations to fill in */
@@ -55,6 +60,8 @@ var message = scriptProperties.getProperty("message");
 var toUserId = scriptProperties.getProperty("toUserId");
 
 function doOneTimeSetup() {
+  postContent(LOG, buildRow(new Date(), "doOneTimeSetup", "", "", ""));
+
   if (waitOngoing) {
     message = WAIT_ONGOING_MESSAGE;
     toUserId = USER_ID;
@@ -127,6 +134,7 @@ function api_createWebhook() {
     "options": {
       "questInvited": true,
       "questFinished": true,
+      "questStarted" : true
     },
   }
 
@@ -139,7 +147,10 @@ function api_createWebhook() {
   }
 
   const url = "https://habitica.com/api/v3/user/webhook";
-  return UrlFetchApp.fetch(url, params);
+  let response =  UrlFetchApp.fetch(url, params);
+  let headers = buildHeader(response);
+  postContent(LOG, buildRow(new Date(), "api_createWebhook", url, "running webhook setup", JSON.stringify(headers)));
+  return response;
 }
 
 function api_acceptQuest() {
@@ -281,7 +292,7 @@ function buildHeader(response) {
       "remain": "",
       "resetTime": "",
       "code": "",
-      "result" : ""
+      "result": ""
     };
   }
 
@@ -296,6 +307,39 @@ function buildHeader(response) {
     "remain": remain,
     "resetTime": resetTime,
     "code": code,
-    "result" : content
+    "result": content
   };
 }
+
+function logTimeSeries(sheetName, row) {
+  console.log("logging to sheet: " + sheetName + ", DATA=" + row);
+
+  let sheet = loadSpreadSheet(TRACKING, sheetName);
+  let headers = getHeaderCols(sheet);
+
+  // Open up a row at the top of the sheet and past vlues there.
+  sheet.insertRowBefore(2);
+  let range = sheet.getRange("A2:E2");
+  let v = [];
+  for (let t = 0; t < headers.length; t++) {
+    v.push(row[headers[t]]);
+  }
+  //let values = [[row["TIME"], row["TAG"], row["EVENT"], row["MESSAGE"], row["DATA"]]];
+  range.setValues([v]);
+
+  // Appends data to the end of the sheet.
+  //sheet.appendRow(parseJSONrow(row));
+}
+
+function postContent(logName, content) {
+  let file = loadJSONFile(logName, "");
+  let jsonData = readJSONData(file);
+  if (jsonData == "") {
+    jsonData = [];
+  }
+  jsonData.push(content);
+  file.setContent(JSON.stringify(jsonData));
+  logTimeSeries(EVENTS, content);
+  return;
+}
+

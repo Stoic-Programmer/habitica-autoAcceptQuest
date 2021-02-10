@@ -3,10 +3,6 @@
  * Permissions will be prompted by the scripts.
  */
 
-const TRACKING = "Raifton Tracking";
-const QUESTS = "Quests";
-const EVENTS = "EVENTS";
-
 function test_logfile() {
   // parse file for quest id and start time that was recorded.
   let date = new Date();
@@ -17,22 +13,16 @@ function test_logfile() {
 
   }
   let row = buildRow(new Date(), "test log", "author", "Test the log file process.", content);
-  postContent(LOG, content);
-}
-
-function postContent(logName, content) {
-  let file = loadJSONFile(logName, "");
-  let jsonData = readJSONData(file);
-  if (jsonData == "") {
-    jsonData = [];
-  }
-  jsonData.push(content);
-  file.setContent(JSON.stringify(jsonData));
-  logTimeSeries(EVENTS, JSON.stringify(content));
-  return;
+  postContent(LOG, row);
 }
 
 
+function test_trackingSpreadSheet() {
+  let content = { "author" : AUTHOR_ID, "message" : "Hello!", "level": 200};
+  let row = buildRow(new Date(), "test_trackingSpreadSheet", "demo", "Test to add rows to existing spreadsheet", JSON.stringify(content));
+
+  logTimeSeries(EVENTS,row);
+}
 
 /**
  * Loads a file form google drive.  If the 'createMissingFile'
@@ -64,13 +54,14 @@ function readJSONData(file) {
   return data;
 }
 
-function loadSpreadSheet(name) {
-  let file = loadFile(TRACKING);
+
+function loadSpreadSheet(workbook, sheetName) {
+  let file = loadFile(workbook);
   let tracker = SpreadsheetApp.open(file);
-  let sheet = tracker.getSheetByName(name);
+  let sheet = tracker.getSheetByName(sheetName);
 
   if (sheet === null || sheet === undefined) {
-    sheet = tracker.insertSheet(name);
+    sheet = tracker.insertSheet(sheetName);
   }
 
   return sheet;
@@ -90,26 +81,6 @@ function getHeaderCols(sheet) {
   return headers;
 }
 
-function logTimeSeries( name, row) {
-  let sheet = loadSpreadSheet(EVENTS);
-  let headers = getHeaderCols(sheet);
-
-  // Open up a row at the top of the sheet and past vlues there.
-  sheet.insertRowBefore(2);
-  let range = sheet.getRange("A2:E2");
-  let values = [[row["TIME"], row["TAG"], row["EVENT"], row["MESSAGE"], row["DATA"]]];
-  range.setValues(values);
-
-  // Appends data to the end of the sheet.
-  //sheet.appendRow(parseJSONrow(row));
-}
-
-function test_trackingSpreadSheet() {
-  let content = { "author" : AUTHOR_ID, "message" : "Hello!", "level": 200};
-  let row = buildRow(new Date(), "test_trackingSpreadSheet", "demo", "Test to add rows to existing spreadsheet", JSON.stringify(content));
-
-  logTimeSeries(EVENTS,row);
-}
 
 /**
   Parse the quest data from the log file given and return the data in a structure.
