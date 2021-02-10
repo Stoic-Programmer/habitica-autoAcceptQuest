@@ -101,7 +101,7 @@ function doPost(e) {
   const data = JSON.parse(e.postData.contents);
   const webhookType = data.webhookType;
   const questActivity = data.type;
-  postContent(LOG, buildRow(new Date(), "doPost", webhookType, questActivity, data));
+  postContent(LOG, buildRow(new Date(), "doPost", webhookType, questActivity, JSON.stringify(data)));
 
   if (webhookType === "questActivity") {
     if ((questActivity === "questInvited") && ENABLE_AUTO_ACCEPT_QUESTS) {
@@ -151,7 +151,7 @@ function api_acceptQuest() {
 
   const url = "https://habitica.com/api/v3/groups/party/quests/accept";
   let response = UrlFetchApp.fetch(url, params);
-  postContent(LOG, buildRow(new Date(), "api_acceptQuest", url, "API call results", buildHeader(response)));
+  postContent(LOG, buildRow(new Date(), "api_acceptQuest", url, "API call results", JSON.stringify(buildHeader(response))));
   return response;
 }
 
@@ -173,7 +173,7 @@ function api_sendPrivateMessage(message, toUserId) {
 
   const url = "https://habitica.com/api/v3/members/send-private-message";
   let response = UrlFetchApp.fetch(url, params);
-  postContent(LOG, buildRow(new Date(), "api_sendPrivateMessage", url, "result of API call", buildHeader(response)));
+  postContent(LOG, buildRow(new Date(), "api_sendPrivateMessage", url, "result of API call", JSON.stringify(buildHeader(response))));
   return response;
 }
 

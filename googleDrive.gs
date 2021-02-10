@@ -13,8 +13,10 @@ function test_logfile() {
   let content = {
     "test": true,
     "author": AUTHOR_ID,
-    "time" : date
+    "time": date
+
   }
+  let row = buildRow(new Date(), "test log", "author", "Test the log file process.", content);
   postContent(LOG, content);
 }
 
@@ -26,6 +28,7 @@ function postContent(logName, content) {
   }
   jsonData.push(content);
   file.setContent(JSON.stringify(jsonData));
+  logTimeSeries(EVENTS, content);
   return;
 }
 
@@ -61,29 +64,52 @@ function readJSONData(file) {
   return data;
 }
 
-function test_trackingSpreadSheet() {
+function loadSpreadSheet(name) {
   let file = loadFile(TRACKING);
   let tracker = SpreadsheetApp.open(file);
+  let sheet = tracker.getSheetByName(name);
 
-  let sheet = tracker.getSheetByName(EVENTS);
   if (sheet === null || sheet === undefined) {
-    sheet = tracker.insertSheet(EVENTS);
+    sheet = tracker.insertSheet(name);
   }
 
-  let range = sheet.getActiveRange();
-  let cols = range.getNumColumns();
-  let rows = range.getNumRows();
-  let values = [];
-  let row = [];
-  row.push("EVENT");
-  row.push("TIME");
-  values.push(row);
-
-  range.setValues(values);
-  sheet.autoResizeColumns(1, 2);
-
+  return sheet;
 }
 
+function getHeaderCols(sheet) {
+  let  expected = ["TIME", "TAG", "EVENT", "MESSAGE", "DATA"];
+  let rangeHeaders = sheet.getRange("A1:E1");
+  let values = rangeHeaders.getValues();
+  let headers = values[0];
+
+  if ( headers[0] === '') {
+    headers = expected;  
+    rangeHeaders.setValues([ headers ]);
+  }
+
+  return headers;
+}
+
+function logTimeSeries( name, row) {
+  let sheet = loadSpreadSheet(EVENTS);
+  let headers = getHeaderCols(sheet);
+
+  // Open up a row at the top of the sheet and past vlues there.
+  sheet.insertRowBefore(2);
+  let range = sheet.getRange("A2:E2");
+  let values = [[row["TIME"], row["TAG"], row["EVENT"], row["MESSAGE"], row["DATA"]]];
+  range.setValues(values);
+
+  // Appends data to the end of the sheet.
+  //sheet.appendRow(parseJSONrow(row));
+}
+
+function test_trackingSpreadSheet() {
+  let content = { "author" : AUTHOR_ID, "message" : "Hello!", "level": 200};
+  let row = buildRow(new Date(), "test_trackingSpreadSheet", "demo", "Test to add rows to existing spreadsheet", JSON.stringify(content));
+
+  logTimeSeries(EVENTS,row);
+}
 
 /**
   Parse the quest data from the log file given and return the data in a structure.
