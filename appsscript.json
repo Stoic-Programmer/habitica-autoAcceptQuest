@@ -4,14 +4,14 @@
     "enabledAdvancedServices": [
       {
         "userSymbol": "Drive",
-        "version": "v2",
-        "serviceId": "drive"
+        "serviceId": "drive",
+        "version": "v2"
       }
     ]
   },
   "webapp": {
-    "access": "ANYONE_ANONYMOUS",
-    "executeAs": "USER_DEPLOYING"
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE_ANONYMOUS"
   },
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8"

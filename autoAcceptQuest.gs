@@ -1,7 +1,7 @@
 /**
  * https://habitica.fandom.com/wiki/Google_Apps_Script#Faster_Auto_Accept_Quests_and_Auto_Notify_on_Quest_End
  * 
- * 2021-02-08 Add googel doc/sheet logging.
+ * 2021-02-08 Add google doc/sheet logging.
  */
 
 const scriptProperties = PropertiesService.getScriptProperties();
@@ -30,8 +30,6 @@ const ENABLE_QUEST_COMPLETED_NOTIFICATION = 1;
 //const AUTHOR_ID = "01daa187-ff5e-46aa-ac3f-d4c529a8c012";  // Original author.
 const AUTHOR_ID = "ebded617-5b88-4f67-9775-6c89ac45014f"; // Rafton on Habitica
 const SCRIPT_NAME = "autoAcceptQuest";
-
-
 
 const HEADERS = {
   "x-client": AUTHOR_ID + "-" + SCRIPT_NAME,
@@ -75,27 +73,49 @@ function doOneTimeSetup() {
   }
 }
 
+function buildRow(time, tag, event, message, data) {
+  return {
+    "TIME": time,
+    "TAG": tag,
+    "EVENT": event,
+    "MESSAGE": message,
+    "DATA": data
+  }
+}
+
+
+/**
+ * {
+ * "enabled": true,
+ * "url": "http://some-webhook-url.com",
+ * "label": "My Quest Webhook",
+ * "type": "questActivity",
+ * "options": { // set at least one to true
+ *   "questStarted": false,  // default
+ *   "questFinished": false, // default
+ *   "questInvited": false,  // default
+ * }
+ *}
+ */
 function doPost(e) {
-  const dataContents = JSON.parse(e.postData.contents);
-  const webhookType = dataContents.type;
+  const data = JSON.parse(e.postData.contents);
+  const webhookType = data.webhookType;
+  const questActivity = data.type;
+  postContent(LOG, buildRow(new Date(), "doPost", webhookType, questActivity, data));
 
-  let now = new Date();
-  const info = {
-    "hookType": webhookType,
-    "time": now,
-    "data": dataContents
-  };
-  postContent(LOG, info);
-
-  if ((webhookType === "questInvited") && ENABLE_AUTO_ACCEPT_QUESTS) {
-    api_acceptQuest_waitRetryOnFail();
+  if (webhookType === "questActivity") {
+    if ((questActivity === "questInvited") && ENABLE_AUTO_ACCEPT_QUESTS) {
+      api_acceptQuest_waitRetryOnFail();
+    }
+    else if ((questActivity === "questFinished") && ENABLE_QUEST_COMPLETED_NOTIFICATION) {
+      message = QUEST_COMPLETED_MESSAGE + " for " + data.quest.key;
+      toUserId = USER_ID;
+      api_sendPrivateMessage_waitRetryOnFail();
+    }
+    else if (questActivity === "questStarted") {
+      // Add work for quest start?  Cast damage spells?  Something else?
+    }
   }
-  else if ((webhookType === "questFinished") && ENABLE_QUEST_COMPLETED_NOTIFICATION) {
-    message = QUEST_COMPLETED_MESSAGE;
-    toUserId = USER_ID;
-    api_sendPrivateMessage_waitRetryOnFail();
-  }
-
   return HtmlService.createHtmlOutput();
 }
 
@@ -131,8 +151,7 @@ function api_acceptQuest() {
 
   const url = "https://habitica.com/api/v3/groups/party/quests/accept";
   let response = UrlFetchApp.fetch(url, params);
-  let ratelimits = buildHeader(response);
-  postContent(LOG, ratelimits);
+  postContent(LOG, buildRow(new Date(), "api_acceptQuest", url, "API call results", buildHeader(response)));
   return response;
 }
 
@@ -150,19 +169,11 @@ function api_sendPrivateMessage(message, toUserId) {
     "muteHttpExceptions": true,
   }
 
-  let now = new Date();
-  let info = {
-    "user": toUserId,
-    "message": message,
-    "time": now
-  };
-
-  postContent(LOG, info);
+  postContent(LOG, buildRow(new Date(), "api_sendPrivateMessage", "", "prepare message", params));
 
   const url = "https://habitica.com/api/v3/members/send-private-message";
   let response = UrlFetchApp.fetch(url, params);
-  let ratelimits = buildHeader(response);
-  postContent(LOG, ratelimits);
+  postContent(LOG, buildRow(new Date(), "api_sendPrivateMessage", url, "result of API call", buildHeader(response)));
   return response;
 }
 
@@ -256,4 +267,3 @@ function resetRetryCountAndWaitOngoing() {
     scriptProperties.setProperty("waitOngoing", waitOngoing);
   }
 }
-
