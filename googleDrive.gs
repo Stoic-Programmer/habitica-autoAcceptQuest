@@ -28,7 +28,7 @@ function postContent(logName, content) {
   }
   jsonData.push(content);
   file.setContent(JSON.stringify(jsonData));
-  logTimeSeries(EVENTS, content);
+  logTimeSeries(EVENTS, JSON.stringify(content));
   return;
 }
 
