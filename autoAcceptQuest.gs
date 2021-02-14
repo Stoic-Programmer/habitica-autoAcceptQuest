@@ -47,7 +47,7 @@ const WAIT_ONGOING_MESSAGE = "**ERROR: Script Failed**  \n\n"
   + "Reason: Exceeded [rate limit](https://habitica.fandom.com/wiki/User_blog:LadyAlys/Rate_Limiting_(Intentional_Slow-Downs)_in_Some_Third-Party_Tools)  \n"
   + "Recommendation: Please avoid manually triggering scripts too quickly, or triggering a different script while another one is not yet finished running. By the time you receive this message, it should now be okay to manually trigger scripts again.";
 
-const QUEST_COMPLETED_MESSAGE = "Quest Completed.";
+const QUEST_COMPLETED_MESSAGE = "Quest Completed: ";
 const RESPONSE_OK_MIN = 200; // HTTP status code minimum
 const RESPONSE_OK_MAX = 299; // HTTP status code maximum
 const MAX_RETRIES = 4; // Total of MAX_RETRIES + 1 tries
@@ -91,6 +91,30 @@ function buildRow(time, tag, event, message, data) {
 }
 
 
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  const webhookType = data.webhookType;
+  const questActivity = data.type;
+  postContent(LOG, buildRow(new Date(), "doPost", webhookType, questActivity, JSON.stringify(data)));
+
+  if (webhookType === "questActivity") {
+    if ((questActivity === "questInvited") && ENABLE_AUTO_ACCEPT_QUESTS) {
+      api_acceptQuest_waitRetryOnFail();
+    }
+    else if ((questActivity === "questFinished") && ENABLE_QUEST_COMPLETED_NOTIFICATION) {
+      message = QUEST_COMPLETED_MESSAGE + data.quest.key;
+      toUserId = USER_ID;
+      api_sendPrivateMessage_waitRetryOnFail();
+    }
+    else if (questActivity === "questStarted") {
+      // Add work for quest start?  Cast damage spells?  Something else?
+      
+    }
+  }
+  return HtmlService.createHtmlOutput();
+}
+
+
 /**
  * {
  * "enabled": true,
@@ -104,28 +128,6 @@ function buildRow(time, tag, event, message, data) {
  * }
  *}
  */
-function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-  const webhookType = data.webhookType;
-  const questActivity = data.type;
-  postContent(LOG, buildRow(new Date(), "doPost", webhookType, questActivity, JSON.stringify(data)));
-
-  if (webhookType === "questActivity") {
-    if ((questActivity === "questInvited") && ENABLE_AUTO_ACCEPT_QUESTS) {
-      api_acceptQuest_waitRetryOnFail();
-    }
-    else if ((questActivity === "questFinished") && ENABLE_QUEST_COMPLETED_NOTIFICATION) {
-      message = QUEST_COMPLETED_MESSAGE + " for " + data.quest.key;
-      toUserId = USER_ID;
-      api_sendPrivateMessage_waitRetryOnFail();
-    }
-    else if (questActivity === "questStarted") {
-      // Add work for quest start?  Cast damage spells?  Something else?
-    }
-  }
-  return HtmlService.createHtmlOutput();
-}
-
 function api_createWebhook() {
   const payload = {
     "url": WEB_APP_URL,
